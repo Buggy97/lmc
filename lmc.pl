@@ -9,6 +9,7 @@ oP("BRP", 8).
 oP("INP", 901).
 oP("OUT", 902).
 oP("HLT", 0).
+oP("DAT", '').
 
 /*Utils*/
 /*Rimuove l'ultimo elemento da una lista*/
@@ -16,26 +17,19 @@ remove_last([], [], "") :- !.
 remove_last([X], [], X) :- !.
 remove_last([H|T], [H|S], F) :- remove_last(T, S, F),
 								!.
+
+/*Data una riga restituisce l'istruzione in memoria*/
+
 /*Data una istruzione numerica resituisce OPCODE e argomento*/
 split_instr(Inst, X, Arg) :- string_chars(Inst, [X|T]),
 							 string_chars(Arg_, T),
 							 atom_number(Arg_, Arg).
 
-/*Data una riga restituisce l'istruzione in memoria*/
-parseLine(_, Line, 0) :- split_string(Line, " ", " ", [X]),
-								X = "DAT",
-								!.
-
-parseLine(_, Line, T) :- split_string(Line, " ", " ", [Y, T]),
-								Y = "DAT",
-								integer(T), 
-								!.
-
 /*Gestice il caso ISTRUZIONE LBL/VAL*/							
 parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [Y, T]),
 								get_value(Insts, T, Val),
-								oP(Y, Op),
-								atomic_list_concat([Op, Val], Inst),
+								oP(Y, Z),
+								atomic_list_concat([Z, Val], Inst),
 								!.
 /*Gestice il caso LBL ISTRUZIONE LBL/VAL*/
 parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [_, Y, T]),
@@ -43,6 +37,32 @@ parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [_, Y, T]),
 								oP(Y, Op),
 								atomic_list_concat([Op, Val], Inst),
 								!.
+
+parseLine(_, Line, '0') :- split_string(Line, " ", " ", [X]),
+						   X = "DAT",
+						   !.
+
+parseLine(_, Line, '0') :- split_string(Line, " ", " ", [_, X]),
+						   X = "DAT",
+						   !.
+
+parseLine(_, Line, F) :- split_string(Line, " ", " ", [X]),
+						 oP(X, F2),
+						 atom_number(F, F2),
+						 !.
+
+parseLine(_, Line, F) :- split_string(Line, " ", " ", [_, X]),
+						 oP(X, F2),
+						 atom_number(F, F2),
+						 !.
+
+
+
+/*Data una lista di istruzioni restituisce la lista convertita in istruzioni*/
+parseLines([], _, []) :- !.
+parseLines([H | T], RAW, [X | S]) :- parseLine(RAW, H, X),
+									 parseLines(T, RAW, S),
+									 !.
 
 /*Dato un argomento di un'istruzione restituisce un valore*/
 get_value(_, Term, Final) :- atom_string(Final, Term), atom_number(Final, _),!.
@@ -59,21 +79,21 @@ normalize(Val, NewVal, Flag) :- ((Val > 999; Val < 0),
 
 /*Elimina un commento da una riga*/
 purge_comm(X, New2) :- sub_string(X, Z, _, _, "//"),
-					  sub_string(X, 0, Z, _, New), 
-					  normalize_space(string(New2), New),
-					  !.
+					   sub_string(X, 0, Z, _, New), 
+					   normalize_space(string(New2), New),
+					   !.
+purge_comm(X, X2) :- normalize_space(string(X2), X).
+
 
 /*Elimina tutti i commenti data una lista di righe*/
 purge_comms([], []) :- !.
 purge_comms([X|S], [H|T]) :- purge_comm(X, H),
                              H \= "",
-                             purge_comms(S, T),
-                             !.
-
+                             purge_comms(S, T).
+                             
 purge_comms([X|S], T) :- purge_comm(X, H),
                          H = "",
-                         purge_comms(S, T),
-                         !.
+                         purge_comms(S, T).
 
 /*Sostituisce le occorrenze in lista*/
 replace([], _, _, []) :- !.
@@ -96,7 +116,8 @@ replace_pos(L, _, _, L).
 /*Trova la posizione dell'etichetta nel codice*/
 find_pos(OG, [H|_], LBL, ADDR) :- split_string(H, " ", " ", [X|_]),
                                   X = LBL,
-                                  nth0(ADDR, OG, H),
+								  nth0(ADDR2, OG, H),
+								  string_to_atom(ADDR2, ADDR),
                                   !.
 
 find_pos(OG, [H|T], LBL, ADDR) :- split_string(H, " ", " ", [X|_]),
@@ -124,13 +145,15 @@ execution_loop(state(Acc, Pc, Mem, In, Out, Flag), F) :-
 				one_instruction(state(Acc, Pc, Mem, In, Out, Flag), NextState),
 				execution_loop(NextState, F).
 
-/**********************************DEBUG******************************************
-dbexecution_loop(State, State) :- functor(State, halted_state, 6).				 *
-																				 *
-dbexecution_loop(state(Acc, Pc, Mem, In, Out, Flag), F) :-						 *
-				one_instruction(state(Acc, Pc, Mem, In, Out, Flag), NextState),	 *
-				execution_loop(NextState, F).								     *
-****************************************************************************^****/
+/**********************************DEBUG*****************************************************
+dbexecution_loop(State, State) :- functor(State, halted_state, 6).				 			*
+																				 			*
+dbexecution_loop(state(Acc, Pc, Mem, In, Out, Flag), F) :-						 			*
+				one_instruction(state(Acc, Pc, Mem, In, Out, Flag), NextState),	 			*
+				execution_loop(NextState, F).								     			*
+****************************************************************************^****************/
+db_parse_file(File, MEM) :- readLines(File, L), purge_comms(L, L2), parseLines(L2, L2, MEM).
+
 /*OVERHEAD*/
 
 one_instruction(halted_state(Acc, Pc, Mem, In, Out, Flag),
