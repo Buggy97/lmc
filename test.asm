@@ -1,100 +1,27 @@
-first bra farAway // try this program with input 901 902 705 600 0 4 5 6 7 8 9 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-dat 0
-staOp dat 300
-op dat 0 // generated instruction
-bra ret // return to the "caller"
-tmp dat 0
-sp dat 0
-one dat 1
-farAway sta first // overwrite the first memory location
-continue inp // get one number in input
-brz first // if it is zero start to execute
-sta tmp // save the number in tmp
-lda sp // load the pointer
-add staOp // generate the store instruction
-sta op // save the generated instruction
-lda tmp // load the valued received in input
-bra op // jump to the generated instruction
-ret lda sp // update the pointer value
+// Questo programma esegue due cicli innestati senza produrre nessun
+// output alla fine. Ad ogni ciclo piu' interno stampa il valore
+// dell'indice del ciclo interno (10000 valori di output totali)
+lda zero //notare che questo assembly e' case-insensitive
+sta i //e quindi riferirsi alla stessa etichetta in maiuscolo
+L1 lda zero //e in minuscolo e' valido
+sta j
+L2 lda j
+out
 add one
-sta sp
-bra continue // start the cycle again
+sta j
+sub M
+brp END2
+bra L2
+END2 lda i
+add one
+sta i
+sub N
+brp END1
+bra L1
+END1 hlt
+ZERO dat 0
+ONE dat 1
+I dat 0
+J dat 0
+N dat 100
+M dat 100

@@ -1,3 +1,5 @@
+/*TODO: VERIFICARE SE SORGENTE CORRETTO*/
+
 /*Operazioni supportate*/
 oP("ADD", 1).
 oP("SUB", 2).
@@ -30,33 +32,34 @@ parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [Y, T]),
 								get_value(Insts, T, Val),
 								oP(Y, Z),
 								atomic_list_concat([Z, Val], Inst),
+								%atom_number(Inst2, Inst),
 								!.
 /*Gestice il caso LBL ISTRUZIONE LBL/VAL*/
 parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [_, Y, T]),
 								get_value(Insts, T, Val),
 								oP(Y, Op),
 								atomic_list_concat([Op, Val], Inst),
+								%atom_number(Inst2, Inst),
 								!.
 
+
 parseLine(_, Line, '0') :- split_string(Line, " ", " ", [X]),
-						   X = "DAT",
-						   !.
+						 X = "DAT",
+						 !.
 
 parseLine(_, Line, '0') :- split_string(Line, " ", " ", [_, X]),
-						   X = "DAT",
-						   !.
-
+						 X = "DAT",
+						 !.
+	 
 parseLine(_, Line, F) :- split_string(Line, " ", " ", [X]),
 						 oP(X, F2),
 						 atom_number(F, F2),
 						 !.
-
+	 
 parseLine(_, Line, F) :- split_string(Line, " ", " ", [_, X]),
 						 oP(X, F2),
 						 atom_number(F, F2),
-						 !.
-
-
+						 !.							
 
 /*Data una lista di istruzioni restituisce la lista convertita in istruzioni*/
 parseLines([], _, []) :- !.
@@ -154,6 +157,31 @@ dbexecution_loop(state(Acc, Pc, Mem, In, Out, Flag), F) :-						 			*
 ****************************************************************************^****************/
 db_parse_file(File, MEM) :- readLines(File, L), purge_comms(L, L2), parseLines(L2, L2, MEM).
 
+/*Without aps*/
+/*FILL*/
+fill(N, E, Xs) :-
+	length(Xs, N),       % Xs is a list of length N
+	maplist(=(E), Xs).   % all elements in Xs are equal to E
+
+/*Fill it*/
+fill_it(Mem, NewMem) :- length(Mem, L), 
+						LE is 100-L,
+						fill(LE, '0', B),
+						append(Mem, B, NewMem).
+
+lmc_load(File, Mem_) :-	readLines(File, L), 
+						purge_comms(L, L2), 
+						parseLines(L2, L2, Mem), 
+						fill_it(Mem, Mem_),
+						!.
+
+lmc_run(File, Input, Out) :- readLines(File, L),
+						purge_comms(L, L2),
+						parseLines(L2, L2, Mem),
+						fill_it(Mem, Mem_),
+						execution_loop(state(0, 0, Mem_, Input, [], noflag), Out),
+						!.
+
 /*OVERHEAD*/
 
 one_instruction(halted_state(Acc, Pc, Mem, In, Out, Flag),
@@ -164,9 +192,10 @@ one_instruction(state(Acc, Pc, Mem, In, Out, _), State) :-
 				nth0(Pc, Mem, INST),
 				split_instr(INST, OP, ARG),
 				OP = '1',
-				Acc_ is Acc + ARG,
+				nth0(ARG, Mem, Acc_),
+				atom_number(Acc_, Acc___),
 				Pc_ is (Pc+1) mod  100,
-				normalize(Acc_, Acc__, Flag_),
+				normalize(Acc + Acc___, Acc__, Flag_),
 				copy_term(state(Acc__, Pc_, Mem, In, Out, Flag_), State),
 				Pc_ \= 0,
 				!.
@@ -176,9 +205,10 @@ one_instruction(state(Acc, Pc, Mem, In, Out, _), State) :-
 				nth0(Pc, Mem, INST),
 				split_instr(INST, OP, ARG),
 				OP = '2',
-				Acc_ is Acc - ARG,
+				nth0(ARG, Mem, Acc_),
+				atom_number(Acc_, Acc___),
 				Pc_ is (Pc + 1) mod  100,
-				normalize(Acc_, Acc__, Flag_),
+				normalize(Acc - Acc___, Acc__, Flag_),
 				copy_term(state(Acc__, Pc_, Mem, In, Out, Flag_), State),
 				Pc_ \= 0,
 				!.
@@ -187,9 +217,10 @@ one_instruction(state(Acc, Pc, Mem, In, Out, _), State) :-
 one_instruction(state(Acc, Pc, Mem, In, Out, Flag), State) :-
 				nth0(Pc, Mem, INST),
 				split_instr(INST, OP, ARG),
+				atom_number(Acc_, Acc),
 				OP = '3',
 				Pc_ is (Pc + 1) mod  100,
-				replace_pos(Mem, ARG, Acc, Mem_),
+				replace_pos(Mem, ARG, Acc_, Mem_),
 				copy_term(state(Acc, Pc_, Mem_, In, Out, Flag), State),
 				Pc_ \= 0,
 				!.
@@ -201,7 +232,8 @@ one_instruction(state(_, Pc, Mem, In, Out, Flag), State) :-
 				OP = '5',
 				Pc_ is (Pc + 1) mod  100,
 				nth0(ARG, Mem, Acc_),
-				copy_term(state(Acc_, Pc_, Mem, In, Out, Flag), State),
+				atom_number(Acc_, Acc__),
+				copy_term(state(Acc__, Pc_, Mem, In, Out, Flag), State),
 				Pc_ \= 0,
 				!.
 
@@ -256,15 +288,14 @@ one_instruction(state(Acc, Pc, Mem, In, Out, Flag), State) :-
 				!.
 
 /*INPUT*/
-one_instruction(state(_, Pc, Mem, In, Out, Flag), State) :-
+one_instruction(state(_, Pc, Mem, [ToIn|In], Out, Flag), State) :-
 				nth0(Pc, Mem, INST),
 				string_chars(INST, [X, Y, Z|_]),
 				X = '9', Y = '0', Z = '1',
-				In \= [],
-				remove_last(In, In_, T),
-				Acc_ is (T) mod  1000,
+				[ToIn|In] \= [],
+				Acc_ is (ToIn),
 				Pc_ is (Pc + 1) mod  100,
-				copy_term(state(Acc_, Pc_, Mem, In_, Out, Flag), State),
+				copy_term(state(Acc_, Pc_, Mem, In, Out, Flag), State),
 				Pc_ \= 0,
 				!.
 
@@ -274,7 +305,8 @@ one_instruction(state(Acc, Pc, Mem, In, Out, Flag), State) :-
 				string_chars(INST, [X, Y, Z|_]),
 				X = '9', Y = '0', Z = '2',
 				Pc_ is (Pc + 1) mod  100,
-				copy_term(state(Acc, Pc_, Mem, In, [Acc|Out], Flag), State),
+				append(Out, [Acc], Out_),
+				copy_term(state(Acc, Pc_, Mem, In, Out_, Flag), State),
 				Pc_ \= 0,
 				!.
 
