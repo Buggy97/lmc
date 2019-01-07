@@ -233,7 +233,7 @@
                 :pc (mod (+ (getf (rest st) :pc) 1) 1000)
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
-                :out (cons (getf (rest st) :acc) (getf (rest st) :out))
+                :out (append (getf (rest st) :out) (list (getf (rest st) :acc)))
                 :flag (getf (rest st) :flag)))
 
 (defun halt (st)
@@ -313,6 +313,8 @@
 (defun execution-loop (state)
     (getf (rest (clean-state (process-loop (raw-state state)))) :out))
 
+(defun one-instruction (state) (process-state state))
+
 (defun db-state (file in)
     (list   'state
                             :acc 0
@@ -340,15 +342,3 @@
                             :in in
                             :out nil
                             :flag 'noflag)))
-
-(process-loop (raw-state (db-state "C:\\Users\\farja\\Desktop\\Uni\\LP\\lmc\\test.asm" '(901 902 705 600 0 4 5 6 7 8 9 0))))
-
-(lmc-load "C:\\Users\\farja\\Desktop\\Uni\\LP\\lmc\\test.asm")
-
-(defparameter *state* '(state :acc 1 :pc 0 :mem ("12" "123" "117") :in () :out () :flag noflag))
-
-(defparameter *test* (list "LBL ADD 5" "SUB 2" "DAT" "DAT 42" "INP" "BRA LBL"))
-
-
-
-'(state :acc 1 :pc 0 :mem ("15" "16" "26" "25" "15" "512" "12" "612" "0" "0" "0" "0" "313" "0") :in nil :out: nil :flag 'flag)
