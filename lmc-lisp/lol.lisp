@@ -63,7 +63,7 @@
     (if insts
         (let ((inst (first (remove "" (split-sequence " " (first insts))
                                      :test #'equal))))
-             (write insts)
+             ;;(write insts)
              (if (getOp inst) 
                 (cons (write-to-string (parse-integer (concatenate 
                                                         'string (getOp inst)
@@ -124,23 +124,43 @@
 
 (defun validLines (lines)
         (if lines
-         (and (validLine (first lines))
+         (and 
+              (validLine (first lines))
+              ;;(write (first lines))
               (validLines (rest lines)))
          T))
 
 (defun validLine (line)
         (let ((inst (splitinstruction line)))
-        (if (or (and (string= (first inst) "DAT")
-                 (eq (length inst) 1))
+        (if (or (and (or (string= (first inst) "DAT")
+                         (string= (first inst) "INP")
+                         (string= (first inst) "OUT")
+                         (string= (first inst) "HLT"))
+                     (eq (length inst) 1))
                 (and (eq (length inst) 2)
                 (or (and (string= (first inst) "DAT")
                           (isValue (second inst)))
                      (and (getOp (first inst))
-                          (isValidArg (second inst)))))
+                          (isValidArg (second inst))
+                          (not (or (equal (first inst) "DAT")
+                                   (equal (first inst) "INP")
+                                   (equal (first inst) "HLT")
+                                   (equal (first inst) "OUT"))))
+                     (and (or (string= (second inst) "INP")
+                              (string= (second inst) "DAT")
+                              (string= (second inst) "OUT")
+                              (string= (second inst) "HLT"))
+                          (isLabel (first inst)))))
                 (and (eq (length inst) 3)
                  (isLabel (first inst))
-                 (getOp (second inst))
-                 (isValidArg (third inst))))
+                 (or (and (getOp (second inst))
+                          (isValidArg (third inst))
+                          (not (or (string= (second inst) "DAT")
+                                   (string= (second inst) "INP")
+                                   (string= (second inst) "OUT")
+                                   (string= (second inst) "HLT"))))
+                      (and (isValue (third inst))
+                           (string= (second inst) "DAT")))))
                 T nil)))
 
 (defun getComponents (inst)
@@ -156,13 +176,13 @@
             (cons (car l) (replace-elem a (1- n) (cdr l))))))
 
 (defun add (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
         ;(write roba)
         (list   'state
                 :acc (mod (+ (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem)))) 1000)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
@@ -171,13 +191,13 @@
                                 999) 'flag 'noflag)))))
 
 (defun sub (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
         ;(write roba)
         (list   'state
                 :acc (mod (- (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem)))) 1000)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
@@ -186,10 +206,10 @@
                                 0) 'flag 'noflag)))))
 
 (defun store (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (replace-elem (write-to-string (getf (rest st) :acc)) 
                         arg (getf (rest st) :mem))
                 :in (getf (rest st) :in)
@@ -197,12 +217,12 @@
                 :flag (getf (rest st) :flag))))
 
 (defun load_ (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (>= arg 0)
                         (parse-integer (nth arg (getf (rest st) :mem)))
                         nil)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
@@ -224,8 +244,8 @@
                 :pc (if (and (eq (getf (rest st) :flag) 'noflag)
                              (eq (getf (rest st) :acc) 0))
                             arg
-                            (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0)
-                                nil (mod (+ (getf (rest st) :pc) 1) 1000)))
+                            (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0)
+                                nil (mod (+ (getf (rest st) :pc) 1) 100)))
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
@@ -236,8 +256,8 @@
                 :acc (getf (rest st) :acc)
                 :pc (if (eq (getf (rest st) :flag) 'noflag)
                              arg
-                            (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0)
-                                nil (mod (+ (getf (rest st) :pc) 1) 1000)))
+                            (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0)
+                                nil (mod (+ (getf (rest st) :pc) 1) 100)))
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
@@ -245,12 +265,12 @@
 
 ;;;ACC NULL IF ERR
 (defun input (st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (getf (rest st) :in)
                         (first (getf (rest st) :in))
                         nil)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (getf (rest st) :mem)
                 :in (if (getf (rest st) :in) (rest (getf (rest st) :in)) 
                         (getf (rest st) :in))
@@ -258,10 +278,10 @@
                 :flag (getf (rest st) :flag))))
 
 (defun output (st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 1000) 0) nil 
+        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
-                :pc (mod (+ (getf (rest st) :pc) 1) 1000)
+                :pc (mod (+ (getf (rest st) :pc) 1) 100)
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (append (getf (rest st) :out) 
@@ -281,7 +301,7 @@
       (if (ok-state state)
         (let ((inst (getcomponents (nth (getf (rest state) :pc)
                     (getf (rest state) :mem)))))
-                ;(write state)
+                (write state)
                 (cond ((string= (first inst) "1") 
                     (add (parse-integer (second inst)) state))
 

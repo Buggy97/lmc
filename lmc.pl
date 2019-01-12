@@ -1,4 +1,4 @@
-/*TODO: VERIFICARE SE SORGENTE CORRETTO*/
+/*TODO: TEST SU SCALA */
 
 /*Operazioni supportate*/
 oP("ADD", 1).
@@ -14,19 +14,28 @@ oP("HLT", 0).
 oP("DAT", '').
 
 /*Utils*/
+/*Verifica se stringa e' una istruzione*/
+is_op(X, 1) :- oP(X, _), !.
+is_op(_, 0) :- !.
+
 /*Rimuove l'ultimo elemento da una lista*/
 remove_last([], [], "") :- !.
 remove_last([X], [], X) :- !.
 remove_last([H|T], [H|S], F) :- remove_last(T, S, F),
 								!.
 
-/*Data una riga restituisce l'istruzione in memoria*/
+/*Resitituisce la prima cifra dato un numero*/
+numb('', '') :- !.
+numb(F, T) :- number_string(F, S), string_chars(S, [C|_]), 
+			  number_chars(T, [C]), !.
+
 
 /*Data una istruzione numerica resituisce OPCODE e argomento*/
 split_instr(Inst, X, Arg) :- string_chars(Inst, [X|T]),
 							 string_chars(Arg_, T),
 							 atom_number(Arg_, Arg).
 
+/*Data una riga restituisce l'istruzione in memoria*/
 /*Gestice il caso ISTRUZIONE LBL/VAL*/							
 parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [Y, T]),
 								get_value(Insts, T, Val),
@@ -75,10 +84,20 @@ get_value(Insts, Term, Val) :- find_pos(Insts, Insts, Term, Val), !.
 /*Verifica che il valore è positivo e modulo 1000, se il valore non
  *Rispetta le condizioni allora restituisce flag altrimenti noflag
  */
-normalize(Val, NewVal, Flag) :- ((Val > 999; Val < 0),
+
+out_of_bounds(Val) :- Val < 0, !.
+out_of_bounds(Val) :- Val > 999, !.
+
+/*normalize(Val, NewVal, Flag) :- ((Val > 999; Val < 0),
 								NewVal is Val mod 1000,
 								atom_string(Flag, "flag")), !;
-								NewVal is Val, atom_string(Flag, "noflag"), !.
+								NewVal is Val, atom_string(Flag, "noflag"), !.*/
+
+normalize(Val, NewVal, Flag) :- out_of_bounds(Val),
+								NewVal is Val mod 1000,
+								atom_string(Flag, "flag"), !.
+
+normalize(Val, NewVal, Flag) :- NewVal is Val, atom_string(Flag, "noflag"), !.
 
 /*Elimina un commento da una riga*/
 purge_comm(X, New2) :- sub_string(X, Z, _, _, "//"),
@@ -114,8 +133,6 @@ replace_pos(L, _, _, L).
 
 
 /*Traduce le etichette in indirizzi*/
-
-
 /*Trova la posizione dell'etichetta nel codice*/
 find_pos(OG, [H|_], LBL, ADDR) :- split_string(H, " ", " ", [X|_]),
                                   X = LBL,
@@ -139,6 +156,43 @@ readLines(File, L)	:- open(File, read, Stream),
 /*state(Acc, Pc, Mem, In, Out, Flag) TODO Controllo cut*/
 /*halted_state(Acc, Pc, Mem, In, Out, Flag)*/
 /*one_instruction(State, State)*/
+
+/*Verifica se il valore e' una etichetta valida*/
+validLabel(F) :- string_chars(F, [C|_]), char_type(C, alpha), is_op(F, M), 
+				 M = 0, !.
+/*Verifica se l'argomento e' valido*/
+validArg(F) :- number_string(_, F), !.
+validArg(F) :- validLabel(F), !.
+
+/*Verifica che una di input sia corretto*/
+/*Caso INST*/
+validLine(Line) :- split_string(Line, " ", " ", [X]), X = "DAT", !.
+validLine(Line) :- split_string(Line, " ", " ", [X]), X = "INP", !.
+validLine(Line) :- split_string(Line, " ", " ", [X]), X = "OUT", !.
+validLine(Line) :- split_string(Line, " ", " ", [X]), X = "HLT", !.
+/*CASO LBL INST o INST LBL/VAL*/
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), X = "DAT", 
+				   number_string(_, Y), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), oP(X, CODE),
+				   validArg(Y), number(CODE), between(1, 8, CODE), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), Y = "INP",
+				   validLabel(X), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), Y = "DAT",
+				   validLabel(X), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), Y = "OUT",
+				   validLabel(X), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y]), Y = "HLT",
+				   validLabel(X), !.
+/*CASO LBL INST LBL/VAL*/
+validLine(Line) :- split_string(Line, " ", " ", [X, Y, Z]), 
+				   validLabel(X), oP(Y, CODE), validArg(Z), numb(CODE, N),
+				   number(N), between(1, 8, N), !.
+validLine(Line) :- split_string(Line, " ", " ", [X, Y, Z]), 
+				   validLabel(X), oP(Y, CODE), number_string(_, Z), CODE = '', !.
+
+/*Verifica che un file sia corretto*/
+validLines([Line|Lines]) :- validLine(Line), validLines(Lines), !.
+validLines([]) :- !.
 
 /*EXECUTION LOOP*/
 execution_loop(State, Out) :- functor(State, halted_state, _),
@@ -170,13 +224,15 @@ fill_it(Mem, NewMem) :- length(Mem, L),
 						append(Mem, B, NewMem).
 
 lmc_load(File, Mem_) :-	readLines(File, L), 
-						purge_comms(L, L2), 
+						purge_comms(L, L2),
+						validLines(L2), 
 						parseLines(L2, L2, Mem), 
 						fill_it(Mem, Mem_),
 						!.
 
 lmc_run(File, Input, Out) :- readLines(File, L),
 						purge_comms(L, L2),
+						validLines(L2),
 						parseLines(L2, L2, Mem),
 						fill_it(Mem, Mem_),
 						execution_loop(state(0, 0, Mem_, Input, [], noflag), Out),
