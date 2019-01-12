@@ -176,7 +176,7 @@
             (cons (car l) (replace-elem a (1- n) (cdr l))))))
 
 (defun add (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
         ;(write roba)
         (list   'state
@@ -188,10 +188,10 @@
                 :out (getf (rest st) :out)
                 :flag (if (> (+ (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem)))) 
-                                999) 'flag 'noflag)))))
+                                999) 'flag 'noflag))))
 
 (defun sub (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
         ;(write roba)
         (list   'state
@@ -203,10 +203,10 @@
                 :out (getf (rest st) :out)
                 :flag (if (<  (- (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem))))
-                                0) 'flag 'noflag)))))
+                                0) 'flag 'noflag))))
 
 (defun store (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
                 :pc (mod (+ (getf (rest st) :pc) 1) 100)
@@ -214,10 +214,10 @@
                         arg (getf (rest st) :mem))
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
-                :flag (getf (rest st) :flag))))
+                :flag (getf (rest st) :flag)))
 
 (defun load_ (arg st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (>= arg 0)
                         (parse-integer (nth arg (getf (rest st) :mem)))
@@ -226,7 +226,7 @@
                 :mem (getf (rest st) :mem)
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
-                :flag (getf (rest st) :flag))))
+                :flag (getf (rest st) :flag)))
 
 (defun branch (arg st)
         (list   'state
@@ -265,7 +265,7 @@
 
 ;;;ACC NULL IF ERR
 (defun input (st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (getf (rest st) :in)
                         (first (getf (rest st) :in))
@@ -275,10 +275,10 @@
                 :in (if (getf (rest st) :in) (rest (getf (rest st) :in)) 
                         (getf (rest st) :in))
                 :out (getf (rest st) :out)
-                :flag (getf (rest st) :flag))))
+                :flag (getf (rest st) :flag)))
 
 (defun output (st)
-        (if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
+        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
                 :pc (mod (+ (getf (rest st) :pc) 1) 100)
@@ -286,7 +286,7 @@
                 :in (getf (rest st) :in)
                 :out (append (getf (rest st) :out) 
                         (list (getf (rest st) :acc)))
-                :flag (getf (rest st) :flag))))
+                :flag (getf (rest st) :flag)))
 
 (defun halt (st)
         (list   'halted_state
@@ -331,7 +331,7 @@
 
                   ((string= (first inst) "0")
                     (halt state))
-                  (inst (and (write "ERR: ") (write inst)))
+                  ;(inst (and (write "ERR: ") (write inst)))
                     )) (ok-state state)))
 
 (defun clean-state (st)
