@@ -1,5 +1,3 @@
-;TODO: LBL CON NOME DI ISTRUZIONI
-
 (defun read-lines (stream)
     (let ((line (read-line stream nil nil)))
         (when line (cons (string-upcase line) (read-lines stream)))))
@@ -63,7 +61,6 @@
     (if insts
         (let ((inst (first (remove "" (split-sequence " " (first insts))
                                      :test #'equal))))
-             ;;(write insts)
              (if (getOp inst) 
                 (cons (write-to-string (parse-integer (concatenate 
                                                         'string (getOp inst)
@@ -122,11 +119,22 @@
 (defun splitinstruction (inst)
         (remove "" (split-sequence " " inst) :test 'equal))
 
+(defun validArr (arr) (if arr (if (and (<= 
+                                        (if (integerp (first arr)) (first arr) 
+                                                (parse-integer (first arr))) 
+                                                999) 
+                                        (>= 
+                                        (if (integerp (first arr)) (first arr) 
+                                                (parse-integer (first arr))) 
+                                                 0)
+                                   (validArr (rest arr))) T nil) T))
+
+(defun validMem (mem) (if (and (validArr mem) (eq (length mem) 100)) T nil))
+
 (defun validLines (lines)
         (if lines
          (and 
               (validLine (first lines))
-              ;;(write (first lines))
               (validLines (rest lines)))
          T))
 
@@ -176,9 +184,7 @@
             (cons (car l) (replace-elem a (1- n) (cdr l))))))
 
 (defun add (arg st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
-        ;(write roba)
         (list   'state
                 :acc (mod (+ (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem)))) 1000)
@@ -191,9 +197,7 @@
                                 999) 'flag 'noflag))))
 
 (defun sub (arg st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (let ((roba (getf (rest st) :acc)))
-        ;(write roba)
         (list   'state
                 :acc (mod (- (getf (rest st) :acc) 
                         (parse-integer (nth arg (getf (rest st) :mem)))) 1000)
@@ -206,7 +210,6 @@
                                 0) 'flag 'noflag))))
 
 (defun store (arg st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
                 :pc (mod (+ (getf (rest st) :pc) 1) 100)
@@ -217,7 +220,6 @@
                 :flag (getf (rest st) :flag)))
 
 (defun load_ (arg st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (>= arg 0)
                         (parse-integer (nth arg (getf (rest st) :mem)))
@@ -237,7 +239,6 @@
                 :out (getf (rest st) :out)
                 :flag (getf (rest st) :flag)))
 
-;FIX
 (defun branchiz (arg st)
         (list   'state
                 :acc (getf (rest st) :acc)
@@ -250,7 +251,7 @@
                 :in (getf (rest st) :in)
                 :out (getf (rest st) :out)
                 :flag (getf (rest st) :flag)))
-;FIX
+
 (defun branchip (arg st)
         (list   'state
                 :acc (getf (rest st) :acc)
@@ -263,9 +264,7 @@
                 :out (getf (rest st) :out)
                 :flag (getf (rest st) :flag)))
 
-;;;ACC NULL IF ERR
 (defun input (st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (if (getf (rest st) :in)
                         (first (getf (rest st) :in))
@@ -278,7 +277,6 @@
                 :flag (getf (rest st) :flag)))
 
 (defun output (st)
-        ;(if (eq (mod (+ (getf (rest st) :pc) 1) 100) 0) nil 
         (list   'state
                 :acc (getf (rest st) :acc)
                 :pc (mod (+ (getf (rest st) :pc) 1) 100)
@@ -301,7 +299,6 @@
       (if (ok-state state)
         (let ((inst (getcomponents (nth (getf (rest state) :pc)
                     (getf (rest state) :mem)))))
-                (write state)
                 (cond ((string= (first inst) "1") 
                     (add (parse-integer (second inst)) state))
 
@@ -331,17 +328,17 @@
 
                   ((string= (first inst) "0")
                     (halt state))
-                  ;(inst (and (write "ERR: ") (write inst)))
                     )) (ok-state state)))
 
 (defun clean-state (st)
+   (if st
     (list   (first st)
             :acc (getf (rest st) :acc)
             :pc (getf (rest st) :pc)
             :mem (clean-mem (getf (rest st) :mem))
             :in (getf (rest st) :in)
             :out (getf (rest st) :out)
-            :flag (getf (rest st) :flag)))
+            :flag (getf (rest st) :flag)) nil))
 
 (defun raw-state (st)
     (list   (first st)
@@ -354,18 +351,18 @@
 
 
 (defun process-loop (state)
-    (if (and (ok-state state) T)
+    (if (eq (first state) 'halted_state) nil (if (and (ok-state state) T)
         (if (string= (first (getcomponents (nth (getf (rest state) :pc)
                         (getf (rest state) :mem)))) "0")
                 (process-state state)
                 (if (eq (first state) 'state) 
                     (process-loop (process-state state))
-                    (state))) (ok-state state))) 
+                    (state))) (ok-state state))))
 
 (defun execution-loop (state)
     (getf (rest (clean-state (process-loop (raw-state state)))) :out))
 
-(defun one-instruction (state) (process-state state))
+(defun one-instruction (state) (clean-state (process-state (raw-state state))))
 
 (defun db-state (file in)
     (list   'state
@@ -377,24 +374,23 @@
                             :flag 'noflag))
 
 (defun ok-state (st)
-    (if (eq (first st) 'halted_state) st
+    (if (eq (first st) 'halted_state) nil
     (if (or (eq st nil)
             (< (getf (rest st) :pc) 0)
             (eq (getf (rest st) :acc) nil)
             (eq (getf (rest st) :pc) nil)
             (eq (getf (rest st) :mem) nil)
             (eq (getf (rest st) :flag) nil)
-            (> (+ (getf (rest st) :pc) 1) 
-                (length (getf (rest st) :mem)))) nil T)))
+            ) nil T)))
 
 (defun lmc-run (file in) 
-    (execution-loop (list   'state
+    (if (validMem (lmc-load file))(execution-loop (list   'state
                             :acc 0
                             :pc 0
                             :mem (lmc-load file)
                             :in in
                             :out nil
-                            :flag 'noflag)))
+                            :flag 'noflag)) nil))
 
 (defun lmc-load (file) (let ((lines (remove "" (getCleanLines 
                                                     (with-open-file 
@@ -403,6 +399,10 @@
                                                         :direction :input)
                                                   (read-lines stream)))
                                                   :test #'equal)))
-                            (if (validLines lines)
-                                (clean-mem (to-mem (translate lines lines)))
-                                nil)))
+                (if (validLines lines)
+                        (if (validMem (clean-mem (to-mem 
+                                        (translate lines lines))))
+                                      (clean-mem (to-mem 
+                                        (translate lines lines)))
+                            nil)
+                        nil)))

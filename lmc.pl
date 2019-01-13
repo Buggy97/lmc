@@ -1,7 +1,3 @@
-/*TODO: TEST SU SCALA
-		FLAG PER OPERAZIONI ARITMETICHE
- */
-
 /*Operazioni supportate*/
 oP("ADD", 1).
 oP("SUB", 2).
@@ -44,7 +40,7 @@ split_instr(Inst, X, Arg) :- string_chars(Inst, [X|T]),
 
 /*Data una riga restituisce l'istruzione in memoria*/
 /*Gestice il caso ISTRUZIONE LBL/VAL*/							
-parseLine(Insts, Line, Inst) :- split_string(Line, " ", " ", [Y, T]),
+parseLine(Insts, Line, Inst) :-	split_string(Line, " ", " ", [Y, T]),
 								get_value(Insts, T, Val),
 								oP(Y, Z),
 								atomic_list_concat([Z, Val], Inst),
@@ -160,10 +156,6 @@ readLines(File, L)	:- open(File, read, Stream),
 				       string_upper(String, Res),
 				       split_string(Res, "\n", "\n", L).
 
-/*state(Acc, Pc, Mem, In, Out, Flag) TODO Controllo cut*/
-/*halted_state(Acc, Pc, Mem, In, Out, Flag)*/
-/*process_instruction(State, State)*/
-
 /*Verifica se il valore e' una etichetta valida*/
 validLabel(F) :- string_chars(F, [C|_]), char_type(C, alpha), is_op(F, M), 
 				 M = 0, !.
@@ -232,8 +224,10 @@ fill_it(Mem, NewMem) :- length(Mem, L),
 
 /*To regular out*/
 converto_to_reg([], []) :- !.
-converto_to_reg([X], [T]) :- atom(X), number(T), atom_number(X, T), !.
-converto_to_reg([X|T], [X1|T1]) :-  atom(X), number(X1), atom_number(X, X1), converto_to_reg(T, T1), !.
+converto_to_reg([X], [T]) :- atom_number(X, T), !.
+converto_to_reg([X|T], [X1|T1]) :- atom_number(X, X1), converto_to_reg(T, T1), !.
+
+converto_to_reg([X|T], [X1|T1]) :-  number(X1), atom_number(X, X1), atom(X), converto_to_reg(T, T1), !.
 
 lmc_load(File, Mem__) :-	readLines(File, L), 
 						purge_comms(L, L2),
@@ -241,32 +235,23 @@ lmc_load(File, Mem__) :-	readLines(File, L),
 						parseLines(L2, L2, Mem), 
 						fill_it(Mem, Mem_),
 						converto_to_reg(Mem_, Mem__),
+						validMem(Mem__),
 						!.
 
-lmc_run(File, Input, Out) :- readLines(File, L),
-						purge_comms(L, L2),
-						validLines(L2),
-						parseLines(L2, L2, Mem),
-						fill_it(Mem, Mem_),
+
+lmc_run(File, Input, Out) :- lmc_load(File, Mem),
+						converto_to_reg(Mem_, Mem),
 						process_loop(state(0, 0, Mem_, Input, [], noflag), Out),
 						!.
 
 one_instruction(
-	state(Acc, Pc, Mem, In, Out, Flag), Out) :- validMem(Mem),
-												validArr(In),
-												converto_to_reg(Mem_, Mem),
-			process_instruction(state(Acc, Pc, Mem_, In, Out, Flag), Out), !.
+	state(Acc, Pc, Mem, In, Out, Flag), Outt) :- converto_to_reg(Mem_, Mem),
+			process_instruction(state(Acc, Pc, Mem_, In, Out, Flag), Outt), !.
 
 execution_loop(
-	state(Acc, Pc, Mem, In, Out, Flag), Out) :- validMem(Mem),
-												validArr(In),
-												converto_to_reg(Mem_, Mem),
-					process_loop(state(Acc, Pc, Mem_, In, Out, Flag), Out), !.
+	state(Acc, Pc, Mem, In, Out, Flag), Outt) :- converto_to_reg(Mem_, Mem),
+					process_loop(state(Acc, Pc, Mem_, In, Out, Flag), Outt), !.
 
-/*OVERHEAD*
-
-process_instruction(halted_state(Acc, Pc, Mem, In, Out, Flag),
-				halted_state(Acc, Pc, Mem, In, Out, Flag)) :- !.*/
 
 /*ADD*/
 process_instruction(state(Acc, Pc, Mem, In, Out, _), State) :-
