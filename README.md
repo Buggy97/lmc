@@ -31,7 +31,7 @@
   (lmc-run file inputQueue) 
   ``` 
   Get next state of the machine given current state
-  ```prolog
+  ```lisp
   (process-state (list   'state
                 :acc (getf (rest st) :acc)
                 :pc (getf (rest st) :pc)
@@ -41,7 +41,7 @@
                 :flag (getf (rest st) :flag)))
   ```
   Like one-instruction but it loops until the machine halts
-  ```
+  ```lisp
   (execution-loop state)
   ```
   
